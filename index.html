@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ArchiPlume — Studio</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #080808;
+      --text: #e6e6e6;
+      --accent: #d4af37;
+      --gray: #888;
+      
+      /* Awwwards-style Easing (Expo) */
+      --ease-expo: cubic-bezier(0.19, 1, 0.22, 1); 
+      --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+      
+      --cursor-size: 12px;
+    }
+
+    /* 1. RESET & CORE */
+    *, *::before, *::after { box-sizing: border-box; cursor: none; }
+    
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: 'Manrope', sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Noise Texture (Cinematic Grain) */
+    .noise {
+      position: fixed; inset: 0; pointer-events: none; z-index: 9990;
+      opacity: 0.05;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* 2. PRELOADER */
+    .loader {
+      position: fixed; inset: 0; z-index: 10000;
+      background: #000;
+      display: flex; justify-content: center; align-items: center;
+      transition: transform 1s var(--ease-expo) 0.5s; /* Slide up delay */
+    }
+    .loader.done { transform: translateY(-100%); }
+    
+    .loader-count {
+      font-family: 'Playfair Display'; font-size: 8vw; color: var(--accent);
+      font-style: italic;
+    }
+
+    /* 3. CUSTOM CURSOR */
+    .cursor {
+      position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
+      transform: translate(-50%, -50%);
+    }
+    .c-dot {
+      width: var(--cursor-size); height: var(--cursor-size);
+      background: var(--accent); border-radius: 50%;
+      transition: transform 0.2s var(--ease-out);
+    }
+    .c-circle {
+      position: absolute; top: 50%; left: 50%;
+      width: 50px; height: 50px;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.4s, height 0.4s, background 0.4s;
+    }
+    
+    /* Hover States */
+    body.hovering .c-circle { width: 80px; height: 80px; background: rgba(255,255,255,0.05); border-color: transparent; }
+    body.hovering .c-dot { transform: scale(0.5); }
+
+    /* 4. TYPOGRAPHY & REVEALS */
+    h1, h2, h3 { font-family: 'Playfair Display', serif; font-weight: 400; margin: 0; }
+    
+    /* The "Masked Up" Animation - Key for high-end look */
+    .line-mask {
+      overflow: hidden; display: block;
+    }
+    .line-mask span {
+      display: block;
+      transform: translateY(110%) rotate(5deg);
+      transform-origin: left top;
+      transition: transform 1.2s var(--ease-expo), opacity 1.2s var(--ease-expo);
+      opacity: 0;
+    }
+    .in-view .line-mask span {
+      transform: translateY(0) rotate(0deg);
+      opacity: 1;
+    }
+
+    /* Stagger delays */
+    .d-1 { transition-delay: 0.1s; }
+    .d-2 { transition-delay: 0.2s; }
+    .d-3 { transition-delay: 0.3s; }
+
+    /* 5. LAYOUT */
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 5vw; }
+    header {
+      position: fixed; top: 0; width: 100%; padding: 30px 5vw;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 100; mix-blend-mode: difference; color: #fff;
+    }
+    .logo { font-size: 24px; font-weight: 500; letter-spacing: -0.5px; text-decoration: none; color: #fff; }
+    
+    /* 6. MAGNETIC BUTTON */
+    .magnet-area {
+      display: inline-block; padding: 20px; margin: -20px; /* Hit area */
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 15px 30px; border: 1px solid rgba(255,255,255,0.3); border-radius: 50px;
+      text-transform: uppercase; letter-spacing: 1px; font-size: 12px;
+      color: #fff; text-decoration: none; position: relative; overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .btn::before {
+      content:''; position: absolute; inset: 0; background: #fff;
+      transform: translateY(100%); transition: transform 0.4s var(--ease-expo);
+      z-index: -1;
+    }
+    .btn:hover { color: #000; border-color: #fff; }
+    .btn:hover::before { transform: translateY(0); }
+
+    /* 7. HERO SECTION */
+    .hero {
+      height: 100vh; display: flex; flex-direction: column; justify-content: center;
+      padding-top: 100px; position: relative;
+    }
+    .hero-title {
+      font-size: 7vw; line-height: 1; mix-blend-mode: exclusion;
+    }
+    .hero-meta {
+      display: flex; gap: 40px; margin-top: 40px; color: var(--gray); font-size: 14px;
+    }
+    
+    /* Parallax Image Container */
+    .hero-img-wrap {
+      position: absolute; right: 5vw; top: 50%; transform: translateY(-50%);
+      width: 35vw; height: 60vh;
+      z-index: -1; overflow: hidden;
+    }
+    .hero-img {
+      width: 100%; height: 120%; object-fit: cover;
+      transform: translateY(0); transition: transform 0.1s linear; /* JS will drive this */
+      filter: brightness(0.6);
+    }
+    /* Reveal for image (Clip path) */
+    .reveal-img {
+      clip-path: inset(100% 0 0 0);
+      transition: clip-path 1.5s var(--ease-expo);
+    }
+    .in-view.reveal-img { clip-path: inset(0 0 0 0); }
+
+    /* 8. MARQUEE (Infinite Scroll) */
+    .marquee {
+      padding: 80px 0; background: var(--bg); overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .track {
+      display: flex; gap: 60px; width: max-content;
+      animation: scroll 20s linear infinite;
+    }
+    .track h2 {
+      font-size: 6vw; color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.3);
+      white-space: nowrap; transition: color 0.3s;
+    }
+    .track:hover h2 { color: var(--accent); -webkit-text-stroke: 1px var(--accent); }
+    
+    @keyframes scroll { to { transform: translateX(-50%); } }
+
+    /* 9. PROJECTS (Hover Distortion Style) */
+    .project-list { padding: 100px 0; }
+    .project {
+      padding: 40px 0; border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex; justify-content: space-between; align-items: center;
+      transition: padding 0.4s var(--ease-expo), opacity 0.4s;
+    }
+    .project:hover { padding: 60px 0; opacity: 1 !important; }
+    /* Dim others on hover */
+    .project-list:hover .project:not(:hover) { opacity: 0.3; }
+    
+    .p-title { font-size: 3vw; transition: transform 0.5s var(--ease-expo); }
+    .project:hover .p-title { transform: translateX(20px); }
+    .p-cat { font-size: 14px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
+
+    /* Floating Image Preview (Hidden by default, shown via JS) */
+    .hover-reveal {
+      position: fixed; width: 300px; height: 400px;
+      top: 0; left: 0; pointer-events: none; z-index: 50;
+      opacity: 0; transform: scale(0.8);
+      transition: opacity 0.3s, transform 0.6s var(--ease-expo);
+      overflow: hidden; border-radius: 4px;
+    }
+    .hover-reveal.active { opacity: 1; transform: scale(1); }
+    .hover-reveal img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* 10. CONTACT */
+    .contact { padding: 150px 0; text-align: center; }
+    .big-link {
+      font-size: 8vw; font-family: 'Playfair Display';
+      color: #fff; text-decoration: none;
+      position: relative; display: inline-block;
+    }
+    .big-link::after {
+      content: ''; position: absolute; bottom: 10px; left: 0; width: 100%; height: 2px;
+      background: var(--accent); transform: scaleX(0); transform-origin: right;
+      transition: transform 0.6s var(--ease-expo);
+    }
+    .big-link:hover::after { transform: scaleX(1); transform-origin: left; }
+
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 14vw; }
+      .hero-img-wrap { display: none; }
+      .track h2 { font-size: 12vw; }
+      .p-title { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <div class="loader">
+    <div class="loader-count">0%</div>
+  </div>
+
+  <div class="cursor">
+    <div class="c-dot"></div>
+    <div class="c-circle" id="cursor-circle"></div>
+  </div>
+
+  <div class="hover-reveal" id="preview-img">
+    <img src="" alt="Preview" id="preview-src">
+  </div>
+
+  <header>
+    <a href="#" class="logo hover-target">AP.</a>
+    <div class="magnet-area">
+      <a href="#contact" class="btn hover-target magnetic">Menu</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container">
+      <div class="hero-content">
+        <h1 class="hero-title">
+          <span class="line-mask"><span class="d-1">Espaces</span></span>
+          <span class="line-mask"><span class="d-2">Bruts &</span></span>
+          <span class="line-mask"><span style="color:var(--accent)" class="d-3">Raffinés</span></span>
+        </h1>
+        <div class="hero-meta line-mask">
+          <span class="d-3" style="transition-delay: 0.6s">Architecture Intérieure</span>
+          <span class="d-3" style="transition-delay: 0.7s">Casablanca, Maroc</span>
+        </div>
+      </div>
+      
+      <div class="hero-img-wrap reveal-img">
+        <img src="https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=1000&auto=format&fit=crop" class="hero-img" id="hero-p-img" alt="Luxury Interior">
+      </div>
+    </section>
+
+    <section class="marquee">
+      <div class="track">
+        <h2>Concept • Design • Architecture • Innovation • Concept • Design • Architecture • Innovation •</h2>
+        <h2>Concept • Design • Architecture • Innovation • Concept • Design • Architecture • Innovation •</h2>
+      </div>
+    </section>
+
+    <section class="container project-list">
+      <div class="project hover-target" data-img="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?q=80&w=800&fit=crop">
+        <span class="p-cat">01 / Résidentiel</span>
+        <div class="p-title">Villa Anfa Noire</div>
+        <span>2024</span>
+      </div>
+      <div class="project hover-target" data-img="https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=800&fit=crop">
+        <span class="p-cat">02 / Rénovation</span>
+        <div class="p-title">Loft Gauthier</div>
+        <span>2023</span>
+      </div>
+      <div class="project hover-target" data-img="https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?q=80&w=800&fit=crop">
+        <span class="p-cat">03 / Commercial</span>
+        <div class="p-title">Bureaux Onyx</div>
+        <span>2023</span>
+      </div>
+      <div class="project hover-target" data-img="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?q=80&w=800&fit=crop">
+        <span class="p-cat">04 / Hospitality</span>
+        <div class="p-title">Koya Restaurant</div>
+        <span>2022</span>
+      </div>
+    </section>
+
+    <section class="contact container" id="contact">
+      <div class="line-mask">
+        <span class="d-1" style="font-size: 14px; color: var(--accent); text-transform: uppercase; margin-bottom: 20px;">Démarrer un projet</span>
+      </div>
+      <div class="line-mask">
+        <a href="mailto:hello@archiplume.ma" class="big-link hover-target magnetic d-2">hello@archiplume.ma</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* --- 1. LOADER --- */
+    const counter = document.querySelector('.loader-count');
+    let count = 0;
+    const updateCount = setInterval(() => {
+      count += Math.floor(Math.random() * 5) + 1;
+      if(count >= 100) {
+        count = 100;
+        clearInterval(updateCount);
+        setTimeout(() => {
+          document.querySelector('.loader').classList.add('done');
+          // Trigger Hero Animations after loader
+          setTimeout(() => {
+            document.body.classList.add('in-view'); // Triggers global entry
+            triggerScroll(); 
+          }, 800);
+        }, 200);
+      }
+      counter.textContent = count + '%';
+    }, 30);
+
+
+    /* --- 2. CURSOR & MAGNETIC BUTTONS --- */
+    const cursor = document.querySelector('.cursor');
+    const cursorCircle = document.getElementById('cursor-circle');
+    const previewImg = document.getElementById('preview-img');
+    const previewSrc = document.getElementById('preview-src');
+
+    let mouseX = 0, mouseY = 0;
+    let cursorX = 0, cursorY = 0;
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      
+      // Instant dot movement
+      document.querySelector('.c-dot').style.transform = `translate(${mouseX}px, ${mouseY}px)`;
+    });
+
+    // Smooth circle follow loop
+    function animateCursor() {
+      // Linear interpolation (Lerp) for smooth lag
+      cursorX += (mouseX - cursorX) * 0.15;
+      cursorY += (mouseY - cursorY) * 0.15;
+      
+      cursorCircle.style.transform = `translate(${cursorX}px, ${cursorY}px) translate(-50%, -50%)`;
+      
+      // Move preview image if active
+      if(previewImg.classList.contains('active')) {
+        previewImg.style.transform = `translate(${mouseX + 20}px, ${mouseY + 20}px)`;
+      }
+
+      requestAnimationFrame(animateCursor);
+    }
+    animateCursor();
+
+    // Hover States
+    document.querySelectorAll('.hover-target').forEach(el => {
+      el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+      el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+    });
+
+    // Magnetic Buttons Logic
+    document.querySelectorAll('.magnetic').forEach(btn => {
+      btn.addEventListener('mousemove', function(e) {
+        const rect = btn.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        
+        // Move button towards mouse (Magnetic effect)
+        btn.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+      });
+      
+      btn.addEventListener('mouseleave', function() {
+        btn.style.transform = 'translate(0, 0)';
+      });
+    });
+
+    /* --- 3. PROJECT HOVER REVEAL --- */
+    document.querySelectorAll('.project').forEach(proj => {
+      proj.addEventListener('mouseenter', () => {
+        const img = proj.getAttribute('data-img');
+        previewSrc.src = img;
+        previewImg.classList.add('active');
+      });
+      proj.addEventListener('mouseleave', () => {
+        previewImg.classList.remove('active');
+      });
+    });
+
+    /* --- 4. SCROLL OBSERVER (Reveal on Scroll) --- */
+    function triggerScroll() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if(entry.isIntersecting) {
+            entry.target.classList.add('in-view');
+          }
+        });
+      }, { threshold: 0.15 });
+
+      document.querySelectorAll('.reveal-img, .line-mask').forEach(el => observer.observe(el));
+    }
+
+    /* --- 5. PARALLAX IMAGE (Simple JS) --- */
+    const heroImg = document.getElementById('hero-p-img');
+    window.addEventListener('scroll', () => {
+      const scrolled = window.scrollY;
+      if(scrolled < window.innerHeight) {
+        heroImg.style.transform = `scale(1.1) translateY(${scrolled * 0.2}px)`;
+      }
+    });
+
+  </script>
+</body>
+</html>
